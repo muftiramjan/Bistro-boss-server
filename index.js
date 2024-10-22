@@ -28,15 +28,10 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        // Connect the client to the server	(optional starting in v4.7)
-        // await client.connect();
-
-        // collection
-
-        const userscollection = client.db("Bistro").collection("users");
-        const menucollection = client.db("Bistro").collection("Menu");
-        const reviewscollection = client.db("Bistro").collection("Revios");
-        const cartscollection = client.db("Bistro").collection("carts");
+        const usersCollection = client.db("Bistro").collection("users");
+        const menuCollection = client.db("Bistro").collection("Menu");
+        const reviewsCollection = client.db("Bistro").collection("Revios");
+        const cartsCollection = client.db("Bistro").collection("carts");
 
         // jwt releted api
         app.post('/jwt', async (req, res) => {
@@ -49,15 +44,15 @@ async function run() {
 
         // medlware
         const verifiToken = (req, res, next) => {
-            console.log('insaid verifid token', req.headers.authorization);
+            console.log('token', req.headers.authorization);
             if (!req.headers.authorization) {
-                return res.status(401).send({ message: 'forbiddin acces' })
+                return res.status(401).send({ message: 'forbidden access' })
             }
 
             const token = req.headers.authorization.split(' ')[1]
             jwt.verify(token, process.env.ACCES_TOKEN_SECRET, (err, decoded) => {
                 if (err) {
-                    return res.status(401).send({ message: 'forbiddin acces' })
+                    return res.status(401).send({ message: 'forbidden access' })
                 }
                 req.decoded = decoded;
                 next();
@@ -66,17 +61,17 @@ async function run() {
         const verifiyAdmin = async (req, res, next) => {
             const email = req.decoded.email;
             const query = { email: email };
-            const user = await userscollection.findOne(query)
+            const user = await usersCollection.findOne(query)
             const isAdmin = user?.Rool === 'admin';
             if (!isAdmin) {
-                return res.status(403).send({ message: 'forbidden acces' })
+                return res.status(403).send({ message: 'forbidden access' })
             }
             next();
         }
 
-        // userscollection api 
+        // usersCollection api 
         app.get('/users', verifiToken, verifiyAdmin, async (req, res) => {
-            const result = await userscollection.find().toArray();
+            const result = await usersCollection.find().toArray();
             res.send(result)
         })
         app.get('/users/admin/:email', verifiToken, async (req, res) => {
@@ -85,7 +80,7 @@ async function run() {
                 return res.status(403).send({ message: 'unathoraze email' })
             }
             const query = { email: email }
-            const user = await userscollection.findOne(query)
+            const user = await usersCollection.findOne(query)
             console.log(user);
             let admin = false;
             if (user) {
@@ -97,18 +92,18 @@ async function run() {
         app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
-            const exsitinguser = await userscollection.findOne(query)
+            const exsitinguser = await usersCollection.findOne(query)
             if (exsitinguser) {
 
-                return res.send({ message: 'user allrady exsistting', insertedId: null })
+                return res.send({ message: 'user allredy exsistting', insertedId: null })
             }
-            const result = await userscollection.insertOne(user)
+            const result = await usersCollection.insertOne(user)
             res.send(result)
         })
         app.delete('/users/:id', verifiToken, verifiyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
-            const result = await userscollection.deleteOne(query)
+            const result = await usersCollection.deleteOne(query)
             res.send(result)
         })
         app.patch('/users/admin/:id', verifiToken, verifiyAdmin, async (req, res) => {
@@ -119,64 +114,61 @@ async function run() {
                     Rool: 'admin',
                 }
             }
-            const result = await userscollection.updateOne(filter, updatedDoc)
+            const result = await usersCollection.updateOne(filter, updatedDoc)
             res.send(result)
         })
 
-        // cartscollection
+        // cartsCollection
         app.get('/carts', async (req, res) => {
             const email = req.query.email;
             const query = { email: email };
-            const result = await cartscollection.find(query).toArray();
+            const result = await cartsCollection.find(query).toArray();
             res.send(result)
         });
 
 
         app.post('/carts', async (req, res) => {
-            const cartsitems = req.body;
-            const result = await cartscollection.insertOne(cartsitems);
+            const cartsItems = req.body;
+            const result = await cartsCollection.insertOne(cartsItems);
             res.send(result)
         })
         app.delete('/carts/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
-            const result = await cartscollection.deleteOne(query);
+            const result = await cartsCollection.deleteOne(query);
             res.send(result)
         })
 
-        // menucollection
+        // menuCollection
         app.get('/menu', async (req, res) => {
-            const result = await menucollection.find().toArray();
+            const result = await menuCollection.find().toArray();
             res.send(result)
         })
-        app.post('/menu',verifiToken,verifiyAdmin, async (req, res) => {
+        app.post('/menu', async (req, res) => {
             const item = req.body;
-            const result = await menucollection.insertOne(item);
+            const result = await menuCollection.insertOne(item);
             res.send(result)
         })
-        app.delete('/menu/:id',verifiToken,verifiyAdmin, async (req,res) => {
+        app.delete('/menu/:id', async (req,res) => {
             const id=req.params.id;
             const query = { _id: new ObjectId(id) }
-            const result = await menucollection.deleteOne(query);
+            const result = await menuCollection.deleteOne(query);
             res.send(result)
         })
         app.get('/menu/:id', async (req,res) => {
             const id=req.params.id;
             const query = { _id: new ObjectId(id) }
-            const result = await menucollection.findOne(query);
+            const result = await menuCollection.findOne(query);
             res.send(result)
         })
-        // reviewscollection
+        // reviewsCollection
         app.get('/reviews', async (req, res) => {
-            const result = await reviewscollection.find().toArray();
+            const result = await reviewsCollection.find().toArray();
             res.send(result)
         })
-
-        // Send a ping to confirm a successful connection
-        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
-        // Ensures that the client will close when you finish/error
+   
 
     }
 }
@@ -184,7 +176,7 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('bostro boos raning')
+    res.send('bistro boos cumming soon')
 })
 app.listen(port, () => {
     console.log(`bistro boss server is coming ${port}`);
